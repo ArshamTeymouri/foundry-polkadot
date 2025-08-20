@@ -11,7 +11,10 @@ use polkadot_sdk::{
 use std::sync::Arc;
 use substrate_runtime::{OpaqueBlock as Block, RuntimeApi};
 
-use crate::AnvilNodeConfig;
+use crate::{
+    rpc::{create_full, FullDeps},
+    AnvilNodeConfig,
+};
 
 pub type FullClient =
     sc_service::TFullClient<Block, RuntimeApi, WasmExecutor<sp_io::SubstrateHostFunctions>>;
@@ -80,13 +83,18 @@ pub fn new<Network: sc_network::NetworkBackend<Block, <Block as BlockT>::Hash>>(
             metrics,
         })?;
 
+    let (mut sink, commands_stream) = futures::channel::mpsc::channel(1024);
     let rpc_extensions_builder = {
         let client = client.clone();
         let pool = transaction_pool.clone();
-
+        let command_sink = sink.clone();
         Box::new(move |_| {
-            Ok(polkadot_sdk::substrate_frame_rpc_system::System::new(client.clone(), pool.clone())
-                .into_rpc())
+            let deps = FullDeps {
+                client: client.clone(),
+                pool: pool.clone(),
+                command_sink: Some(command_sink.clone()),
+            };
+            create_full(deps).map_err(Into::into)
         })
     };
 
@@ -116,19 +124,18 @@ pub fn new<Network: sc_network::NetworkBackend<Block, <Block as BlockT>::Hash>>(
     // Implement a dummy block production mechanism for now, just build an instantly finalized block
     // every 6 seconds. This will have to change.
     let default_block_time = 6000;
-    let (mut sink, commands_stream) = futures::channel::mpsc::channel(1024);
-    task_manager.spawn_handle().spawn("block_authoring", "anvil-polkadot", async move {
-        loop {
-            futures_timer::Delay::new(std::time::Duration::from_millis(default_block_time)).await;
-            sink.try_send(sc_consensus_manual_seal::EngineCommand::SealNewBlock {
-                create_empty: true,
-                finalize: true,
-                parent_hash: None,
-                sender: None,
-            })
-            .unwrap();
-        }
-    });
+    //task_manager.spawn_handle().spawn("block_authoring", "anvil-polkadot", async move {
+    //    loop {
+    //        futures_timer::Delay::new(std::time::Duration::from_millis(default_block_time)).await;
+    //        sink.try_send(sc_consensus_manual_seal::EngineCommand::SealNewBlock {
+    //            create_empty: true,
+    //            finalize: true,
+    //            parent_hash: None,
+    //            sender: None,
+    //        })
+    //        .unwrap();
+    //    }
+    //});
 
     let params = sc_consensus_manual_seal::ManualSealParams {
         block_import: client.clone(),

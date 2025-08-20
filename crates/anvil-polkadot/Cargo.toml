@@ -20,6 +20,8 @@ required-features = ["cli"]
 
 [dependencies]
 # foundry internal
+jsonrpsee = { version = "0.24.3", features = ["server"] }
+jsonrpsee-core = { version = "0.24.3" }
 substrate-runtime = { path = "substrate-runtime"}
 polkadot-sdk = { workspace = true, features = [
     "sc-allocator",

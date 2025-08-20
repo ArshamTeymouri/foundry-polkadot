@@ -30,6 +30,8 @@ pub mod server;
 
 mod api_server;
 
+pub mod rpc;
+
 /// contains cli command
 #[cfg(feature = "cmd")]
 pub mod cmd;
