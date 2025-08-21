@@ -1,13 +1,15 @@
+
 use polkadot_sdk::{
-    sc_basic_authorship, sc_consensus, sc_consensus_manual_seal,
+    sc_basic_authorship, sc_consensus, sc_consensus_manual_seal::{self, seal_block, InstantSealParams, SealBlockParams},
     sc_executor::WasmExecutor,
     sc_network,
     sc_service::{self, error::Error as ServiceError, Configuration, RpcHandlers, TaskManager},
     sc_transaction_pool, sp_io,
-    sp_runtime::traits::Block as BlockT,
+    sp_runtime::{impl_tx_ext_default, traits::Block as BlockT},
     sp_timestamp,
     substrate_frame_rpc_system::SystemApiServer,
 };
+use serde::ser;
 use std::sync::Arc;
 use substrate_runtime::{OpaqueBlock as Block, RuntimeApi};
 
@@ -34,10 +36,11 @@ pub struct Service {
 }
 
 /// Builds a new service for a full client.
-pub fn new<Network: sc_network::NetworkBackend<Block, <Block as BlockT>::Hash>>(
+pub async fn new<Network: sc_network::NetworkBackend<Block, <Block as BlockT>::Hash>>(
     _anvil_config: &AnvilNodeConfig,
     config: Configuration,
 ) -> Result<Service, ServiceError> {
+    use polkadot_sdk::sc_service::TransactionPool;
     let (client, backend, keystore_container, mut task_manager) =
         sc_service::new_full_parts::<Block, RuntimeApi, _>(
             &config,
@@ -93,6 +96,7 @@ pub fn new<Network: sc_network::NetworkBackend<Block, <Block as BlockT>::Hash>>(
                 client: client.clone(),
                 pool: pool.clone(),
                 command_sink: Some(command_sink.clone()),
+                // command_sink: None,
             };
             create_full(deps).map_err(Into::into)
         })
@@ -113,7 +117,7 @@ pub fn new<Network: sc_network::NetworkBackend<Block, <Block as BlockT>::Hash>>(
         telemetry: None,
     })?;
 
-    let proposer = sc_basic_authorship::ProposerFactory::new(
+    let mut proposer = sc_basic_authorship::ProposerFactory::new(
         task_manager.spawn_handle(),
         client.clone(),
         transaction_pool.clone(),
@@ -121,6 +125,26 @@ pub fn new<Network: sc_network::NetworkBackend<Block, <Block as BlockT>::Hash>>(
         None,
     );
 
+
+    let select_chain = SelectChain::new(backend.clone());
+
+			let mut client_mut = client.clone();
+            let create_inherent_data_providers =
+				|_, ()| async move { Ok(sp_timestamp::InherentDataProvider::from_system_time()) };
+        let seal_params = SealBlockParams{
+        sender: None,
+        parent_hash: None,
+        finalize: true,
+        create_empty: true,
+        env: &mut proposer,
+        select_chain: &select_chain,
+        block_import: &mut client_mut,
+        consensus_data_provider: None,
+        pool: transaction_pool.clone(),
+        client: client.clone(),
+        create_inherent_data_providers:  &create_inherent_data_providers,
+    };
+    seal_block(seal_params).await;
     // Implement a dummy block production mechanism for now, just build an instantly finalized block
     // every 6 seconds. This will have to change.
     let default_block_time = 6000;
@@ -136,26 +160,52 @@ pub fn new<Network: sc_network::NetworkBackend<Block, <Block as BlockT>::Hash>>(
     //        .unwrap();
     //    }
     //});
+    let tx_cl = transaction_pool.clone();
+    task_manager.spawn_handle().spawn("transaction-monitoring", "anvil-polkadot", async move {
+        loop {
+            futures_timer::Delay::new(std::time::Duration::from_millis(default_block_time/6)).await;
+            info!("0--->{:?}", tx_cl.futures());
+            let ready_transactions: Vec<_> = tx_cl.ready().collect();
+            info!("1---> Ready transactions: {:?}", ready_transactions);
+        }
+    });
 
-    let params = sc_consensus_manual_seal::ManualSealParams {
+    //let manual_seal_params = sc_consensus_manual_seal::ManualSealParams {
+    //    block_import: client.clone(),
+    //    env: proposer,
+    //    client: client.clone(),
+    //    pool: transaction_pool.clone(),
+    //    select_chain: SelectChain::new(backend.clone()),
+    //    commands_stream: Box::pin(commands_stream),
+    //    consensus_data_provider: None,
+    //    create_inherent_data_providers: move |_, ()| async move {
+    //        Ok(sp_timestamp::InherentDataProvider::from_system_time())
+    //    },
+    //};
+
+    /////////////// Instant Seal
+    let create_inherent_data_providers = | _, ()| async move {
+        Ok(sp_timestamp::InherentDataProvider::from_system_time())
+    };
+
+    let tx_clone = transaction_pool.clone();
+    let instant_seal_params = InstantSealParams{
         block_import: client.clone(),
         env: proposer,
         client: client.clone(),
         pool: transaction_pool.clone(),
-        select_chain: SelectChain::new(backend.clone()),
-        commands_stream: Box::pin(commands_stream),
+        select_chain,
         consensus_data_provider: None,
-        create_inherent_data_providers: move |_, ()| async move {
-            Ok(sp_timestamp::InherentDataProvider::from_system_time())
-        },
+        create_inherent_data_providers,
     };
-    let authorship_future = sc_consensus_manual_seal::run_manual_seal(params);
+    let authorship_future = sc_consensus_manual_seal::run_instant_seal(instant_seal_params);
+    //let authorship_future = sc_consensus_manual_seal::run_manual_seal(manual_seal_params);
 
     task_manager.spawn_essential_handle().spawn_blocking(
         "manual-seal",
         "substrate",
-        authorship_future,
+        authorship_future
     );
 
-    Ok(Service { task_manager, client, backend, tx_pool: transaction_pool, rpc_handlers })
+    Ok( Service { task_manager, client: client.clone(), backend: backend.clone(), tx_pool: transaction_pool, rpc_handlers })
 }

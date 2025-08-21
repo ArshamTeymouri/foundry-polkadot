@@ -23,18 +23,19 @@ use polkadot_sdk::{
     *,
 };
 use std::sync::Arc;
+use crate::rpc::sp_block_builder::BlockBuilder;
 // use substrate_runtime::Runtime;
 
 mod interface {
     use polkadot_sdk::{polkadot_sdk_frame as frame, *};
     use substrate_runtime::Runtime;
 
-    // pub type Block = substrate_runtime::Block;
+    pub type Block = substrate_runtime::Block;
     pub use frame::runtime::types_common::OpaqueBlock;
     pub type AccountId = <Runtime as frame_system::Config>::AccountId;
     pub type Nonce = <Runtime as frame_system::Config>::Nonce;
     pub type Hash = <Runtime as frame_system::Config>::Hash;
-    // pub type Balance = <Runtime as pallet_balances::Config>::Balance;
+    pub type Balance = <Runtime as pallet_balances::Config>::Balance;
     // pub type MinimumBalance = <Runtime as pallet_balances::Config>::ExistentialDeposit;
 }
 
@@ -73,10 +74,12 @@ where
         sc_consensus_manual_seal::rpc::ManualSealApiServer,
         substrate_frame_rpc_system::{System, SystemApiServer},
     };
+
     let mut module = RpcModule::new(());
     let FullDeps { client, pool, command_sink } = deps;
 
     module.merge(System::new(client.clone(), pool.clone()).into_rpc())?;
+
     if let Some(sink) = command_sink {
         module.merge(ManualSeal::new(sink).into_rpc())?;
     }

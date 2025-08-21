@@ -105,7 +105,7 @@ pub async fn spawn(
 ) -> Result<TaskManager, sc_cli::Error> {
     // Spawn the substrate node.
     let substrate_service =
-        substrate_node::service::new::<Litep2pNetworkBackend>(&anvil_config, substrate_config)
+        substrate_node::service::new::<Litep2pNetworkBackend>(&anvil_config, substrate_config).await
             .map_err(sc_cli::Error::Service)?;
 
     // Spawn the other tasks.
