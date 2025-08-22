@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["merge_account_data","merge_db_account_data","merge_journaled_state_data"],"struct":["BackendStrategy","EvmBackendStrategyRunner"],"trait":["BackendStrategyContext","BackendStrategyRunner"]};

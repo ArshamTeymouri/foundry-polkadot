@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["get_backend_ref","is_revive_inspect_context"],"struct":["ReviveBackendStrategyContext","ReviveBackendStrategyRunner","ReviveInspectContext"],"trait":["ReviveBackendStrategyBuilder"]};

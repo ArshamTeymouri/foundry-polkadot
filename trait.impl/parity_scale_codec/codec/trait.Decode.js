@@ -1,0 +1,9 @@
+(function() {
+    var implementors = Object.fromEntries([["revive_env",[["impl Decode for <a class=\"enum\" href=\"revive_env/runtime/enum.OriginCaller.html\" title=\"enum revive_env::runtime::OriginCaller\">OriginCaller</a>"],["impl Decode for <a class=\"enum\" href=\"revive_env/runtime/enum.RuntimeCall.html\" title=\"enum revive_env::runtime::RuntimeCall\">RuntimeCall</a>"],["impl Decode for <a class=\"enum\" href=\"revive_env/runtime/enum.RuntimeError.html\" title=\"enum revive_env::runtime::RuntimeError\">RuntimeError</a>"],["impl Decode for <a class=\"enum\" href=\"revive_env/runtime/enum.RuntimeEvent.html\" title=\"enum revive_env::runtime::RuntimeEvent\">RuntimeEvent</a>"],["impl Decode for <a class=\"enum\" href=\"revive_env/runtime/enum.RuntimeFreezeReason.html\" title=\"enum revive_env::runtime::RuntimeFreezeReason\">RuntimeFreezeReason</a>"],["impl Decode for <a class=\"enum\" href=\"revive_env/runtime/enum.RuntimeHoldReason.html\" title=\"enum revive_env::runtime::RuntimeHoldReason\">RuntimeHoldReason</a>"],["impl Decode for <a class=\"enum\" href=\"revive_env/runtime/enum.RuntimeLockId.html\" title=\"enum revive_env::runtime::RuntimeLockId\">RuntimeLockId</a>"],["impl Decode for <a class=\"enum\" href=\"revive_env/runtime/enum.RuntimeSlashReason.html\" title=\"enum revive_env::runtime::RuntimeSlashReason\">RuntimeSlashReason</a>"],["impl Decode for <a class=\"enum\" href=\"revive_env/runtime/enum.RuntimeTask.html\" title=\"enum revive_env::runtime::RuntimeTask\">RuntimeTask</a>"],["impl Decode for <a class=\"enum\" href=\"revive_env/runtime/enum.RuntimeViewFunction.html\" title=\"enum revive_env::runtime::RuntimeViewFunction\">RuntimeViewFunction</a>"]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":57,"fragment_lengths":[1638]}
